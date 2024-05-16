@@ -34,6 +34,7 @@ struct Differential <: Operator
     x
     Differential(x) = new(value(x))
 end
+
 function (D::Differential)(x)
     x = unwrap(x)
     if isarraysymbolic(x)
@@ -42,8 +43,9 @@ function (D::Differential)(x)
         term(D, x)
     end
 end
-(D::Differential)(x::Union{Num, Arr}) = wrap(D(unwrap(x)))
-(D::Differential)(x::Complex{Num}) = wrap(ComplexTerm{Real}(D(unwrap(real(x))), D(unwrap(imag(x)))))
+(D::Differential)(x) = Term{symtype(x)}(D, [x])
+(D::Differential)(x::Num) = Num(D(value(x)))
+
 SymbolicUtils.promote_symtype(::Differential, T) = T
 
 is_derivative(x) = istree(x) ? operation(x) isa Differential : false
@@ -296,11 +298,14 @@ end
 function expand_derivatives(n::Num, simplify=false; occurrences=nothing)
     wrap(expand_derivatives(value(n), simplify; occurrences=occurrences))
 end
+<<<<<<< HEAD
 function expand_derivatives(n::Complex{Num}, simplify=false; occurrences=nothing)
     wrap(ComplexTerm{Real}(expand_derivatives(real(n), simplify; occurrences=occurrences),
                            expand_derivatives(imag(n), simplify; occurrences=occurrences)))
 end
 expand_derivatives(x, simplify=false; occurrences=nothing) = x
+=======
+>>>>>>> ae38555f (Change Num to represent Complex numbers as well, instead of representating them as two real numbers)
 
 _iszero(x) = false
 _isone(x) = false

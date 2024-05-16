@@ -55,14 +55,14 @@ recipe(n) = latexify_derivatives(cleanup_exprs(_toexpr(n)))
     return recipe(n)
 end
 
-@latexrecipe function f(z::Complex{Num})
-    env --> :equation
-    cdot --> false
-    
-    iszero(z.im) && return :($(recipe(z.re)))
-    iszero(z.re) && return :($(recipe(z.im)) * $im)
-    return :($(recipe(z.re)) + $(recipe(z.im)) * $im)
-end
+# @latexrecipe function f(z::Complex{Num})
+#     env --> :equation
+#     cdot --> false
+#     
+#     iszero(z.im) && return :($(recipe(z.re)))
+#     iszero(z.re) && return :($(recipe(z.im)) * $im)
+#     return :($(recipe(z.re)) + $(recipe(z.im)) * $im)
+# end
 
 @latexrecipe function f(n::ArrayOp)
     env --> :equation
@@ -117,11 +117,11 @@ end
     return Expr(:call, :connect, map(nameof, c.systems)...)
 end
 
-Base.show(io::IO, ::MIME"text/latex", x::RCNum) = print(io, "\$\$ " * latexify(x) * " \$\$")
+Base.show(io::IO, ::MIME"text/latex", x::Num) = print(io, "\$\$ " * latexify(x) * " \$\$")
 Base.show(io::IO, ::MIME"text/latex", x::Symbolic) = print(io, "\$\$ " * latexify(x) * " \$\$")
 Base.show(io::IO, ::MIME"text/latex", x::Equation) = print(io, "\$\$ " * latexify(x) * " \$\$")
 Base.show(io::IO, ::MIME"text/latex", x::Vector{Equation}) = print(io, "\$\$ " * latexify(x) * " \$\$")
-Base.show(io::IO, ::MIME"text/latex", x::AbstractArray{<:RCNum}) = print(io, "\$\$ " * latexify(x) * " \$\$")
+Base.show(io::IO, ::MIME"text/latex", x::AbstractArray{<:Num}) = print(io, "\$\$ " * latexify(x) * " \$\$")
 
 _toexpr(O::ArrayOp) = _toexpr(O.term)
 
@@ -171,9 +171,15 @@ function _toexpr(O)
             denom_expr = length(denom) > 1 ? Expr(:call, :*, denom...) : denom[1]
             frac_expr = Expr(:call, :/, numer_expr, denom_expr)
         end
-
-        if m.coeff < 0
+        
+        if m.coeff isa Real && m.coeff < 0
             return Expr(:call, :-, frac_expr)
+        elseif !iszero(real(m.coeff)) && real(m.coeff) < 0
+            return Expr(:call, :-, frac_expr)
+        elseif iszero(real(m.coeff)) && imag(m.coeff) > 0
+            return Expr(:call, :+, Expr(:call, :*, im, frac_expr))
+        elseif iszero(real(m.coeff)) && imag(m.coeff) < 0
+            return Expr(:call, :-, Expr(:call, :*, im, frac_expr))
         else
             return frac_expr
         end
@@ -207,7 +213,7 @@ function _toexpr(O)
         var = if vars isa Tuple
             Expr(:call, :(*), _toexpr(vars...))
         else
-                _toexpr(vars)
+            _toexpr(vars)
         end
         return Expr(:call, :_integral, _toexpr(lower), _toexpr(upper), vars, _toexpr(integrand))
     elseif symtype(op) <: FnType

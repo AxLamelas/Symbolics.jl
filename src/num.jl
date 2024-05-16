@@ -1,15 +1,13 @@
-@symbolic_wrap struct Num <: Real
+@symbolic_wrap struct Num <: Number
     val
 end
-
-const RCNum = Union{Num, Complex{Num}}
 
 unwrap(x::Num) = x.val
 
 """
     Num(val)
 
-Wrap anything in a type that is a subtype of Real
+Wrap anything in a type that is a subtype of Number
 """
 Num
 
@@ -25,54 +23,16 @@ SymbolicUtils.@number_methods(
                               Num(f(value(a), value(b))),
                               [conj, real, transpose]
                              )
-Base.conj(x::Num) = x
+Base.conj(x::Num) = Num(conj(value(x)))
 Base.transpose(x::Num) = x
 
-Base.eps(::Type{Num}) = Num(0)
-Base.typemin(::Type{Num}) = Num(-Inf)
-Base.typemax(::Type{Num}) = Num(Inf)
 Base.float(x::Num) = x
 
 IfElse.ifelse(x::Num,y,z) = Num(IfElse.ifelse(value(x), value(y), value(z)))
 
-Base.promote_rule(::Type{Bool}, ::Type{<:Num}) = Num
-for C in [Complex, Complex{Bool}]
-    @eval begin
-        Base.:*(x::Num, z::$C) = Complex(x * real(z), x * imag(z))
-        Base.:*(z::$C, x::Num) = Complex(real(z) * x, imag(z) * x)
-        Base.:/(x::Num, z::$C) = let (a, b) = reim(z), den = a^2 + b^2
-            Complex(x * a / den, -x * b / den)
-        end
-        Base.:/(z::$C, x::Num) = Complex(real(z) / x, imag(z) / x)
-        Base.:+(x::Num, z::$C) = Complex(x + real(z), imag(z))
-        Base.:+(z::$C, x::Num) = Complex(real(z) + x, imag(z))
-        Base.:-(x::Num, z::$C) = Complex(x - real(z), -imag(z))
-        Base.:-(z::$C, x::Num) = Complex(real(z) - x, imag(z))
-    end
-end
 
-function Base.inv(z::Complex{Num})
-    a, b = reim(z)
-    den = a^2 + b^2
-    Complex(a/den, -b/den)
-end
-function Base.:/(x::Complex{Num}, y::Complex{Num})
-    a, b = reim(x)
-    c, d = reim(y)
-    den = c^2 + d^2
-    Complex((a*c + b*d)/den, (b*c - a*d)/den)
-end
-Base.:^(z::Complex{Num}, n::Integer) = Base.power_by_squaring(z, n)
 Base.:^(::Irrational{:ℯ}, x::Num) = exp(x)
 
-function Base.show(io::IO, z::Complex{<:Num})
-    r, i = reim(z)
-    compact = get(io, :compact, false)
-    show(io, r)
-    print(io, (compact ? "+" : " + ") * "(")
-    show(io, i)
-    print(io, ")*im")
-end
 
 # TODO: move this to SymbolicUtils
 substitute(expr, s::Pair; kw...) = substituter([s[1] => s[2]])(expr; kw...)
@@ -90,23 +50,17 @@ Base.nameof(n::Num) = nameof(value(n))
 Base.iszero(x::Num) = SymbolicUtils.fraction_iszero(unwrap(x))
 Base.isone(x::Num) = SymbolicUtils.fraction_isone(unwrap(x))
 
-import SymbolicUtils: <ₑ, Symbolic, Term, operation, arguments
-
 Base.show(io::IO, n::Num) = show_numwrap[] ? print(io, :(Num($(value(n))))) : Base.show(io, value(n))
+
+import SymbolicUtils: <ₑ, Symbolic, Term, istree, operation, arguments, similarterm
 
 Base.promote_rule(::Type{<:Number}, ::Type{<:Num}) = Num
 Base.promote_rule(::Type{<:Symbolic{<:Number}}, ::Type{<:Num}) = Num
-function Base.getproperty(t::Union{Add, Mul, Pow, Term}, f::Symbol)
-    if f === :op
-        Base.depwarn("`x.op` is deprecated, use `operation(x)` instead", :getproperty, force=true)
-        operation(t)
-    elseif f === :args
-        Base.depwarn("`x.args` is deprecated, use `arguments(x)` instead", :getproperty, force=true)
-        arguments(t)
-    else
-        getfield(t, f)
-    end
-end
+
+istree(x::Num) = istree(value(x))
+operation(x::Num) = operation(value(x))
+arguments(x::Num) = arguments(value(x))
+
 <ₑ(s::Num, x) = value(s) <ₑ value(x)
 <ₑ(s, x::Num) = value(s) <ₑ value(x)
 <ₑ(s::Num, x::Num) = value(s) <ₑ value(x)
@@ -171,7 +125,7 @@ Base.convert(::Type{<:Array{Num}}, x::AbstractArray) = map(Num, x)
 Base.convert(::Type{<:Array{Num}}, x::AbstractArray{Num}) = x
 Base.convert(::Type{Sym}, x::Num) = value(x) isa Sym ? value(x) : error("cannot convert $x to Sym")
 
-LinearAlgebra.lu(x::Union{Adjoint{<:RCNum},Transpose{<:RCNum},Array{<:RCNum}}; check=true, kw...) = sym_lu(x; check=check)
+LinearAlgebra.lu(x::Union{Adjoint{<:Num},Transpose{<:Num},Array{<:Num}}; check=true, kw...) = sym_lu(x; check=check)
 
 _iszero(x::Number) = iszero(x)
 _isone(x::Number) = isone(x)
@@ -182,12 +136,14 @@ _isone(x::Num) = _isone(value(x))::Bool
 
 Code.cse(x::Num) = Code.cse(unwrap(x))
 
+similarterm(t::Num, f, args; metadata=nothing) =
+    Num(similarterm(unwrap(t), f, args, SymbolicUtils._promote_symtype(f, args); metadata=metadata))
 ## Documentation
 # This method makes the docstring show all entries in the metadata dict associated with an instance of Num
 function Base.Docs.getdoc(x::Num)
     x = unwrap(x)
     strings =
-        ["A variable of type Symbolics.Num (Num wraps anything in a type that is a subtype of Real)";
+        ["A variable of type Symbolics.Num (Num wraps anything in a type that is a subtype of Number)";
         "# Metadata"]
     for (key, val) in collect(pairs(x.metadata))
         push!(strings, string(string(key), ": ", string(val)))

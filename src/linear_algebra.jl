@@ -11,7 +11,7 @@ end
 function sym_lu(A; check=true)
     SINGULAR = typemax(Int)
     m, n = size(A)
-    F = map(x->x isa RCNum ? x : Num(x), A)
+    F = map(x->x isa Num ? x : Num(x), A)
     minmn = min(m, n)
     p = Vector{LinearAlgebra.BlasInt}(undef, minmn)
     info = 0
@@ -122,7 +122,7 @@ function _solve(A::AbstractMatrix, b::AbstractArray, do_simplify)
     do_simplify ? SymbolicUtils.simplify_fractions.(sol) : sol
 end
 
-LinearAlgebra.ldiv!(A::UpperTriangular{<:Union{Symbolic,RCNum}}, b::AbstractVector{<:Union{Symbolic,RCNum}}, x::AbstractVector{<:Union{Symbolic,RCNum}} = b) = symsub!(A, b, x)
+LinearAlgebra.ldiv!(A::UpperTriangular{<:Union{Symbolic,Num}}, b::AbstractVector{<:Union{Symbolic,Num}}, x::AbstractVector{<:Union{Symbolic,Num}} = b) = symsub!(A, b, x)
 function symsub!(A::UpperTriangular, b::AbstractVector, x::AbstractVector = b)
     LinearAlgebra.require_one_based_indexing(A, b, x)
     n = size(A, 2)
@@ -142,7 +142,7 @@ function symsub!(A::UpperTriangular, b::AbstractVector, x::AbstractVector = b)
     x
 end
 
-LinearAlgebra.ldiv!(A::UnitLowerTriangular{<:Union{Symbolic,RCNum}}, b::AbstractVector{<:Union{Symbolic,RCNum}}, x::AbstractVector{<:Union{Symbolic,RCNum}} = b) = symsub!(A, b, x)
+LinearAlgebra.ldiv!(A::UnitLowerTriangular{<:Union{Symbolic,Num}}, b::AbstractVector{<:Union{Symbolic,Num}}, x::AbstractVector{<:Union{Symbolic,Num}} = b) = symsub!(A, b, x)
 function symsub!(A::UnitLowerTriangular, b::AbstractVector, x::AbstractVector = b)
     LinearAlgebra.require_one_based_indexing(A, b, x)
     n = size(A, 2)
@@ -163,7 +163,7 @@ end
 
 minor(B, j) = @view B[2:end, 1:size(B,2) .!= j]
 minor(B, i, j) = @view B[1:size(B,1) .!= i, 1:size(B,2) .!= j]
-function LinearAlgebra.det(A::AbstractMatrix{<:RCNum}; laplace=true)
+function LinearAlgebra.det(A::AbstractMatrix{<:Num}; laplace=true)
     if laplace
         n = LinearAlgebra.checksquare(A)
         if n == 1
@@ -182,10 +182,10 @@ function LinearAlgebra.det(A::AbstractMatrix{<:RCNum}; laplace=true)
     end
 end
 
-LinearAlgebra.inv(A::AbstractMatrix{<:RCNum}; laplace=true) = _invl(A; laplace=laplace)
-LinearAlgebra.inv(A::StridedMatrix{<:RCNum}; laplace=true) = _invl(A; laplace=laplace)
+LinearAlgebra.inv(A::AbstractMatrix{<:Num}; laplace=true) = _invl(A; laplace=laplace)
+LinearAlgebra.inv(A::StridedMatrix{<:Num}; laplace=true) = _invl(A; laplace=laplace)
 
-function _invl(A::AbstractMatrix{<:RCNum}; laplace=true)
+function _invl(A::AbstractMatrix{<:Num}; laplace=true)
     if laplace
 		n = LinearAlgebra.checksquare(A)
         A⁻¹ = similar(A)
@@ -208,7 +208,7 @@ function _invl(A::AbstractMatrix{<:RCNum}; laplace=true)
     end
 end
 
-function LinearAlgebra.norm(x::AbstractArray{<:RCNum}, p::Real=2)
+function LinearAlgebra.norm(x::AbstractArray{<:Num}, p::Real=2)
     p = value(p)
     issym = p isa Symbolic
     if !issym && p == 2
@@ -326,7 +326,7 @@ end
 ###
 
 # Pretty much just copy-pasted from stdlib
-SparseArrays.SparseMatrixCSC{Tv,Ti}(M::StridedMatrix) where {Tv<:RCNum,Ti} = _sparse(Tv,  Ti, M)
+SparseArrays.SparseMatrixCSC{Tv,Ti}(M::StridedMatrix) where {Tv<:Num,Ti} = _sparse(Tv,  Ti, M)
 function _sparse(::Type{Tv}, ::Type{Ti}, M) where {Tv, Ti}
     nz = count(!_iszero, M)
     colptr = zeros(Ti, size(M, 2) + 1)
