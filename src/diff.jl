@@ -43,7 +43,6 @@ function (D::Differential)(x)
         term(D, x)
     end
 end
-(D::Differential)(x) = Term{symtype(x)}(D, [x])
 (D::Differential)(x::Num) = Num(D(value(x)))
 
 SymbolicUtils.promote_symtype(::Differential, T) = T
