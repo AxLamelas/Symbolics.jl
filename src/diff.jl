@@ -297,14 +297,7 @@ end
 function expand_derivatives(n::Num, simplify=false; occurrences=nothing)
     wrap(expand_derivatives(value(n), simplify; occurrences=occurrences))
 end
-<<<<<<< HEAD
-function expand_derivatives(n::Complex{Num}, simplify=false; occurrences=nothing)
-    wrap(ComplexTerm{Real}(expand_derivatives(real(n), simplify; occurrences=occurrences),
-                           expand_derivatives(imag(n), simplify; occurrences=occurrences)))
-end
 expand_derivatives(x, simplify=false; occurrences=nothing) = x
-=======
->>>>>>> ae38555f (Change Num to represent Complex numbers as well, instead of representating them as two real numbers)
 
 _iszero(x) = false
 _isone(x) = false
