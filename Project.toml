@@ -1,5 +1,5 @@
 name = "Symbolics"
-uuid = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+uuid = "85620c77-5467-4719-8f23-9aeee4d3826a"
 authors = ["Shashi Gowda <gowda@mit.edu>"]
 version = "5.28.1"
 
